@@ -37,7 +37,7 @@ from prompt_toolkit.filters import (Condition, has_focus, has_selection,
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts.prompt import PromptSession
-from prompt_toolkit.shortcuts import print_formatted_text
+from prompt_toolkit.shortcuts import print_formatted_text, CompleteStyle
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.layout.processors import (ConditionalProcessor,
@@ -256,6 +256,13 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
         """
     )
 
+    display_completions = Enum(('column', 'multicolumn','readlinelike'),
+        help= ( "Options for displaying tab completions, 'column', 'multicolumn', and "
+                "'readlinelike'. These options are for `prompt_toolkit`, see "
+                "`prompt_toolkit` documentation for more information."
+                ),
+        default_value='multicolumn').tag(config=True)
+
     highlight_matching_brackets = Bool(True,
         help="Highlight matching brackets.",
     ).tag(config=True)
@@ -327,6 +334,14 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
         tokens = self.get_out_prompt_tokens()
         print_formatted_text(PygmentsTokens(tokens), end='',
                              style = self.pt_cli.app.style)
+
+    @property
+    def pt_complete_style(self):
+        return {
+            'multicolumn': CompleteStyle.MULTI_COLUMN,
+            'column': CompleteStyle.COLUMN,
+            'readlinelike': CompleteStyle.READLINE_LIKE,
+        }[self.display_completions]
 
     kernel_info = {}
 
@@ -452,6 +467,7 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
         self.pt_cli = PromptSession(
             message=(lambda: PygmentsTokens(self.get_prompt_tokens())),
             multiline=True,
+            complete_style = self.pt_complete_style,
             editing_mode=editing_mode,
             lexer=PygmentsLexer(get_pygments_lexer(lexer)),
             prompt_continuation=(
